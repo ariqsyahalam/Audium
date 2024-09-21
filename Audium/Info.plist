@@ -2,10 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Berikan onboarding atau tutorial dalam aplikasi yang menjelaskan pentingnya izin lokasi untuk fungsi aplikasi.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi ini membutuhkan akses lokasi saat digunakan untuk mendeteksi beacon di sekitar.</string>
+	<key>Privacy - Bluetooth LE Privacy Usage Description</key>
+	<string>Aplikasi ini harus diuji pada perangkat iOS fisik karena fitur Bluetooth tidak didukung di simulator.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>We need access to Bluetooth to find devices.</string>
+	<string>Aplikasi ini harus diuji pada perangkat iOS fisik karena fitur Bluetooth tidak didukung di simulator.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Aplikasi ini harus diuji pada perangkat iOS fisik karena fitur Bluetooth tidak didukung di simulator.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
+		<string>location</string>
 		<string>bluetooth-central</string>
 	</array>
 </dict>

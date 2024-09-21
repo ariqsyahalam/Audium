@@ -12,6 +12,12 @@
 		4487D2742C9ECC9A0081AB77 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4487D2732C9ECC9A0081AB77 /* Item.swift */; };
 		4487D2762C9ECC9C0081AB77 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4487D2752C9ECC9C0081AB77 /* Assets.xcassets */; };
 		4487D2792C9ECC9C0081AB77 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4487D2782C9ECC9C0081AB77 /* Preview Assets.xcassets */; };
+		4487D2852C9F2C1B0081AB77 /* BLEDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4487D2842C9F2C1B0081AB77 /* BLEDevice.swift */; };
+		4487D2872C9F2C330081AB77 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4487D2862C9F2C330081AB77 /* BLEManager.swift */; };
+		4487D2892C9F31150081AB77 /* BLEBeacon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4487D2882C9F31150081AB77 /* BLEBeacon.swift */; };
+		4487D28B2C9F31260081AB77 /* BeaconManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4487D28A2C9F31260081AB77 /* BeaconManager.swift */; };
+		4487D28E2C9F355A0081AB77 /* die.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4487D28C2C9F355A0081AB77 /* die.mp3 */; };
+		4487D28F2C9F355A0081AB77 /* kini.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4487D28D2C9F355A0081AB77 /* kini.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +28,12 @@
 		4487D2752C9ECC9C0081AB77 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4487D2782C9ECC9C0081AB77 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		4487D2812C9ECD4C0081AB77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4487D2842C9F2C1B0081AB77 /* BLEDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEDevice.swift; sourceTree = "<group>"; };
+		4487D2862C9F2C330081AB77 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		4487D2882C9F31150081AB77 /* BLEBeacon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEBeacon.swift; sourceTree = "<group>"; };
+		4487D28A2C9F31260081AB77 /* BeaconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconManager.swift; sourceTree = "<group>"; };
+		4487D28C2C9F355A0081AB77 /* die.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = die.mp3; sourceTree = "<group>"; };
+		4487D28D2C9F355A0081AB77 /* kini.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = kini.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,7 +67,13 @@
 			isa = PBXGroup;
 			children = (
 				4487D2812C9ECD4C0081AB77 /* Info.plist */,
+				4487D28C2C9F355A0081AB77 /* die.mp3 */,
+				4487D28D2C9F355A0081AB77 /* kini.mp3 */,
+				4487D2882C9F31150081AB77 /* BLEBeacon.swift */,
+				4487D28A2C9F31260081AB77 /* BeaconManager.swift */,
 				4487D26F2C9ECC9A0081AB77 /* AudiumApp.swift */,
+				4487D2842C9F2C1B0081AB77 /* BLEDevice.swift */,
+				4487D2862C9F2C330081AB77 /* BLEManager.swift */,
 				4487D2712C9ECC9A0081AB77 /* ContentView.swift */,
 				4487D2732C9ECC9A0081AB77 /* Item.swift */,
 				4487D2752C9ECC9C0081AB77 /* Assets.xcassets */,
@@ -130,6 +148,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4487D28E2C9F355A0081AB77 /* die.mp3 in Resources */,
+				4487D28F2C9F355A0081AB77 /* kini.mp3 in Resources */,
 				4487D2792C9ECC9C0081AB77 /* Preview Assets.xcassets in Resources */,
 				4487D2762C9ECC9C0081AB77 /* Assets.xcassets in Resources */,
 			);
@@ -143,8 +163,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				4487D2722C9ECC9A0081AB77 /* ContentView.swift in Sources */,
+				4487D2892C9F31150081AB77 /* BLEBeacon.swift in Sources */,
+				4487D2852C9F2C1B0081AB77 /* BLEDevice.swift in Sources */,
+				4487D2872C9F2C330081AB77 /* BLEManager.swift in Sources */,
 				4487D2742C9ECC9A0081AB77 /* Item.swift in Sources */,
 				4487D2702C9ECC9A0081AB77 /* AudiumApp.swift in Sources */,
+				4487D28B2C9F31260081AB77 /* BeaconManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

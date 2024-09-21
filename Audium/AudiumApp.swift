@@ -7,14 +7,25 @@
 
 import SwiftUI
 import SwiftData
-
-import SwiftUI
+import AVFoundation
 
 @main
 struct AudiumApp: App {
+    init() {
+        // Atur audio session
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            try AVAudioSession.sharedInstance().setActive(true)
+            print("Audio session berhasil diatur")
+        } catch {
+            print("Kesalahan mengatur audio session: \(error.localizedDescription)")
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
 }
+
