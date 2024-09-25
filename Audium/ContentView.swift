@@ -1,80 +1,82 @@
-//
-//  ContentView.swift
-//  Audium
-//
-//  Created by Reyhan Ariq Syahalam on 21/09/24.
-//
-
 import SwiftUI
-import CoreLocation
 
 struct ContentView: View {
-    @ObservedObject var beaconManager = BeaconManager()
-    @State private var isMonitoring = true
-
+    @EnvironmentObject var beaconManager: BeaconManager
+    
     var body: some View {
-        VStack {
-            Toggle(isOn: $isMonitoring) {
-                Text(isMonitoring ? "Monitoring Aktif" : "Monitoring Nonaktif")
-            }
-            .padding()
-            .onChange(of: isMonitoring) { value in
-                if value {
-                    beaconManager.startMonitoring()
-                    beaconManager.startRanging()
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Pameran Patah Hati")
+                    .font(.largeTitle)
+                    .padding()
+                
+                if beaconManager.isSessionActive {
+                    Button(action: {
+                        beaconManager.stopSession()
+                    }) {
+                        Text("Stop Session")
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.red)
+                            .cornerRadius(10)
+                    }
                 } else {
-                    beaconManager.stopMonitoring()
-                    beaconManager.stopRanging()
+                    Button(action: {
+                        beaconManager.startSession()
+                    }) {
+                        Text("Start Session")
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
                 }
-            }
-
-            if !beaconManager.beacons.isEmpty {
+                
+                if let audio = beaconManager.currentAudio {
+                    VStack {
+                        Text("Now Playing:")
+                            .font(.headline)
+                        Text(audio)
+                            .font(.subheadline)
+                    }
+                } else {
+                    Text("No audio playing.")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                }
+                
+                if let note = beaconManager.audioNote {
+                    Text(note)
+                        .font(.footnote)
+                        .padding()
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+                }
+                
                 List(beaconManager.beacons) { beacon in
                     VStack(alignment: .leading) {
-                        Text("UUID: \(beacon.id.uuidString)")
+                        Text("UUID: \(beacon.idUUID.uuidString)")
                             .font(.headline)
                         Text("Major: \(beacon.major), Minor: \(beacon.minor)")
-                        Text("Proximity: \(beacon.proximity.rawValue)")
-                        Text(String(format: "Jarak: %.2f meter", beacon.accuracy))
-                        Text("RSSI: \(beacon.rssi)")
-                        Text("Waktu: \(beacon.timestamp, formatter: dateFormatter)")
+                            .font(.subheadline)
+                        Text("Distance: \(String(format: "%.2f", beacon.accuracy)) meters")
+                            .font(.subheadline)
+                        Text("Proximity: \(beacon.proximity.stringValue)")
+                            .font(.subheadline)
                     }
-                    .padding()
                 }
-            } else {
-                Text("Tidak ada beacon terdekat")
-                    .padding()
             }
-        }
-    }
-
-    // Formatter untuk menampilkan tanggal dan waktu
-    private var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter
-    }
-}
-
-
-
-extension CLProximity {
-    var stringValue: String {
-        switch self {
-        case .immediate:
-            return "Sangat Dekat"
-        case .near:
-            return "Dekat"
-        case .far:
-            return "Jauh"
-        default:
-            return "Tidak Diketahui"
+            .padding()
+            .navigationTitle("Audium")
         }
     }
 }
 
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(BeaconManager())
+    }
 }
