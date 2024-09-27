@@ -6,7 +6,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Text("Pameran Patah Hati")
+                Text("Audium - Museum Audio Guide")
                     .font(.largeTitle)
                     .padding()
                 
