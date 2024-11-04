@@ -63,7 +63,7 @@ struct ContentView: View {
                             .font(.subheadline)
                         Text("Distance: \(String(format: "%.2f", beacon.accuracy)) meters")
                             .font(.subheadline)
-                        Text("Proximity: \(beacon.proximity.stringValue)")
+                        Text("Proximity: \(beacon.rssi)")
                             .font(.subheadline)
                     }
                 }

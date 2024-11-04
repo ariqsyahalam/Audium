@@ -3,81 +3,87 @@ import CoreLocation
 import AVFoundation
 import SwiftUI
 
-// Struct to store individual distance measurements with timestamps
-struct Measurement {
-    let distance: CLLocationAccuracy
-    let timestamp: Date
-}
-
 // Struct to represent a detected BLE Beacon
 struct BLEBeacon: Identifiable {
     let id = UUID()
     let idUUID: UUID
     let major: UInt16
     let minor: UInt16
-    let proximity: CLProximity
     let accuracy: CLLocationAccuracy
     let rssi: Int
 
     var description: String {
-        return "UUID: \(idUUID.uuidString), Major: \(major), Minor: \(minor), Proximity: \(proximity), Accuracy: \(accuracy)m, RSSI: \(rssi)"
+        return "UUID: \(idUUID.uuidString), Major: \(major), Minor: \(minor), Accuracy: \(accuracy)m, RSSI: \(rssi)"
     }
 }
 
-extension CLProximity {
-    var stringValue: String {
-        switch self {
-        case .immediate:
-            return "Immediate"
-        case .near:
-            return "Near"
-        case .far:
-            return "Far"
-        default:
-            return "Unknown"
-        }
-    }
+// Struct to hold narration and background audio files for a beacon, along with RSSI threshold
+struct BeaconAudioFiles {
+    let narration: [String]    // Array of narration audio filenames
+    let background: String     // Background audio filename
+    let rssiThreshold: Int     // RSSI threshold for this beacon
 }
 
-class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate, AVAudioPlayerDelegate {
     private var locationManager: CLLocationManager!
-    
+
     // Published properties to update the UI
     @Published var beacons = [BLEBeacon]()
     @Published var isSessionActive: Bool = false
     @Published var currentAudio: String? = nil
     @Published var audioNote: String? = nil
-    
-    // Mapping between beacon UUIDs and their corresponding audio file names
-    let beaconAudioMapping: [UUID: String] = [
-        UUID(uuidString: "EF63C140-2AF4-4E1E-AAB3-340055B3BB4A")!: "satubulansabach.mp3",
-        UUID(uuidString: "EF63C140-2AF4-4E1E-AAB3-340055B3BB4C")!: "diesabach.mp3",
-        UUID(uuidString: "EF63C140-2AF4-4E1E-AAB3-340055B3BB4D")!: "creepsabach.mp3"
+
+    // Mapping between beacon UUIDs and their corresponding audio files and RSSI threshold
+    let beaconAudioMapping: [UUID: BeaconAudioFiles] = [
+        UUID(uuidString: "9D38C8B0-77F8-4E23-8DBA-1546C4D035A4")!: BeaconAudioFiles(
+            narration: ["1.wav", "2.wav", "3.wav"],
+            background: "a1.wav",
+            rssiThreshold: -65
+        ),
+        UUID(uuidString: "3D023D21-83D9-4C48-94FB-48718E22AA14")!: BeaconAudioFiles(
+            narration: ["4.wav", "5.wav", "6.wav", "7.wav", "8.wav"],
+            background: "a2.wav",
+            rssiThreshold: -75
+        ),
+        UUID(uuidString: "2D7A9F0C-E0E8-4CC9-A71B-A21DB2D034A1")!: BeaconAudioFiles(
+            narration: ["9.wav", "10.wav"],
+            background: "a3.wav",
+            rssiThreshold: -70
+        ),
+        UUID(uuidString: "8C40139D-48F2-46ED-8668-0A3898D7C38E")!: BeaconAudioFiles(
+            narration: ["11.wav", "12.wav"],
+            background: "a4.wav",
+            rssiThreshold: -70
+        )
+        // Add other mappings as needed
     ]
-    
-    private var backgroundPlayer: AVAudioPlayer?
-    private var beaconAudioPlayer: AVAudioPlayer?
+
+    private var beaconNarrationPlayer: AVAudioPlayer?
+    private var beaconBackgroundPlayer: AVAudioPlayer?
     private var currentBeaconUUID: UUID? // UUID of currently playing beacon audio
-    
+
+    // Keeps track of the current narration index for each beacon
+    private var beaconNarrationIndices: [UUID: Int] = [:]
+
     // Timer properties to delay stopping the audio
     private var stopAudioTimer: Timer?
-    private let audioStopDelay: TimeInterval = 3.0 // Delay 5 seconds before stopping audio
-    
+    private let audioStopDelay: TimeInterval = 3.0 // Delay 3 seconds before stopping audio
+
     override init() {
         super.init()
         locationManager = CLLocationManager()
         locationManager.delegate = self
-        
+
         // Set distance filter to none and prevent automatic pausing
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.pausesLocationUpdatesAutomatically = false
-        
+
         // Configure audio session
         configureAudioSession()
     }
-    
+
     // MARK: - Audio Session Configuration
-    
+
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
@@ -86,34 +92,32 @@ class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             print("Failed to configure audio session: \(error.localizedDescription)")
         }
     }
-    
+
     // MARK: - Session Control
-    
-    /// Starts the beacon scanning session and background music playback
+
+    /// Starts the beacon scanning session
     func startSession() {
         locationManager.requestAlwaysAuthorization()
-        
+
         if CLLocationManager.authorizationStatus() == .authorizedAlways ||
             CLLocationManager.authorizationStatus() == .authorizedWhenInUse {
             isSessionActive = true
             startScanning()
-            startBackgroundMusic()
             print("Session started.")
         } else {
             print("Location permission not granted.")
         }
     }
-    
+
     func stopSession() {
         isSessionActive = false
         stopScanning()
-        stopBackgroundMusic()
         stopBeaconAudio()
         print("Session stopped.")
     }
-    
+
     // MARK: - Beacon Scanning
-    
+
     private func startScanning() {
         for uuid in beaconAudioMapping.keys {
             let beaconRegion = CLBeaconRegion(uuid: uuid, identifier: uuid.uuidString)
@@ -123,7 +127,7 @@ class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             print("Started scanning for beacon with UUID: \(uuid.uuidString)")
         }
     }
-    
+
     private func stopScanning() {
         for uuid in beaconAudioMapping.keys {
             let beaconRegion = CLBeaconRegion(uuid: uuid, identifier: uuid.uuidString)
@@ -132,158 +136,195 @@ class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             print("Stopped scanning for beacon with UUID: \(uuid.uuidString)")
         }
     }
-    
-    // MARK: - Background Music Management
-    
-    private func startBackgroundMusic() {
-        guard let backgroundAudioURL = Bundle.main.url(forResource: "bg", withExtension: "mp3") else {
-            print("Background music file not found.")
-            return
-        }
-        
-        do {
-            backgroundPlayer = try AVAudioPlayer(contentsOf: backgroundAudioURL)
-            backgroundPlayer?.numberOfLoops = -1
-            backgroundPlayer?.volume = 0.5
-            backgroundPlayer?.prepareToPlay()
-            backgroundPlayer?.play()
-            print("Background music started.")
-        } catch {
-            print("Error playing background music: \(error.localizedDescription)")
-        }
-    }
-    
-    private func stopBackgroundMusic() {
-        if backgroundPlayer?.isPlaying == true {
-            backgroundPlayer?.stop()
-            print("Background music stopped.")
-        }
-    }
-    
+
     // MARK: - CLLocationManagerDelegate Methods
-    
+
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         switch status {
         case .authorizedAlways, .authorizedWhenInUse:
             if isSessionActive {
                 startScanning()
-                startBackgroundMusic()
             }
         default:
             if isSessionActive {
                 stopScanning()
-                stopBackgroundMusic()
                 stopBeaconAudio()
             }
         }
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didRange beacons: [CLBeacon], satisfying beaconConstraint: CLBeaconIdentityConstraint) {
         DispatchQueue.main.async {
-            let nearBeacons = beacons.filter { $0.proximity == .immediate }
-            
-            self.beacons = nearBeacons.map { beacon in
+            var strongBeacons = [CLBeacon]()
+
+            for beacon in beacons {
+                if let audioFiles = self.beaconAudioMapping[beacon.uuid] {
+                    // Use the beacon's RSSI threshold
+                    if beacon.rssi >= audioFiles.rssiThreshold && beacon.rssi != 0 {
+                        strongBeacons.append(beacon)
+                    }
+                }
+            }
+
+            self.beacons = strongBeacons.map { beacon in
                 BLEBeacon(idUUID: beacon.uuid,
                           major: beacon.major.uint16Value,
                           minor: beacon.minor.uint16Value,
-                          proximity: beacon.proximity,
                           accuracy: beacon.accuracy,
                           rssi: beacon.rssi)
             }
-            
-            // Cek apakah ada beacon dalam radius 1 meter
-            let beaconsWithin1Meter = nearBeacons.filter { $0.accuracy < 1 }
-            
-            if let closestBeacon = beaconsWithin1Meter.min(by: { $0.accuracy < $1.accuracy }) {
-                // Beacon paling dekat berubah atau berbeda
+
+            // Find the closest beacon based on the highest RSSI value
+            if let closestBeacon = strongBeacons.max(by: { $0.rssi < $1.rssi }) {
+                // If the closest beacon has changed
                 if self.currentBeaconUUID != closestBeacon.uuid {
-                    // Hentikan audio beacon yang sedang berjalan
+                    // Stop current beacon audio
                     self.stopBeaconAudio()
-                    
-                    // Ganti ke beacon yang baru
+
+                    // Reset narration index for the new beacon
+                    self.beaconNarrationIndices[closestBeacon.uuid] = 0
+
+                    // Set new current beacon
                     self.currentBeaconUUID = closestBeacon.uuid
                     self.playAudioForBeacon(uuid: closestBeacon.uuid)
-                    self.audioNote = "Playing audio for beacon UUID \(closestBeacon.uuid.uuidString) as it is within 0.5 meter."
+                    self.audioNote = "Playing audio for beacon UUID \(closestBeacon.uuid.uuidString) with RSSI \(closestBeacon.rssi)."
                 } else {
-                    print("Beacon closest remains unchanged and within 0.5 meter; continuing current audio playback.")
+                    print("Beacon closest remains unchanged with RSSI \(closestBeacon.rssi); continuing current audio playback.")
                 }
-                
+
                 self.cancelAudioStopTimer() // Cancel any pending audio stop
             } else {
-                // Tidak ada beacon dalam radius 1 meter
+                // No beacons meet their RSSI threshold
                 if self.currentBeaconUUID != nil {
                     self.scheduleAudioStop()
                 }
             }
-            
+
             self.logScannedBeacons()
         }
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         print("Entered beacon region: \(region.identifier)")
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         print("Exited beacon region: \(region.identifier)")
         DispatchQueue.main.async {
             self.beacons.removeAll { $0.idUUID.uuidString == region.identifier }
             if self.currentBeaconUUID?.uuidString == region.identifier {
                 self.scheduleAudioStop()
-                self.audioNote = "Stopped audio as beacon UUID \(region.identifier) has exited the 1-meter proximity."
+                self.audioNote = "Stopped audio as beacon UUID \(region.identifier) has exited the proximity."
             }
         }
     }
-    
+
     // MARK: - Logging
-    
+
     private func logScannedBeacons() {
         print("Scanned Beacons:")
         for beacon in beacons {
-            print("- UUID: \(beacon.idUUID.uuidString), RSSI: \(beacon.rssi), Distance: \(String(format: "%.2f", beacon.accuracy)) meters, Proximity: \(beacon.proximity.stringValue)")
+            print("- UUID: \(beacon.idUUID.uuidString), RSSI: \(beacon.rssi), Distance: \(String(format: "%.2f", beacon.accuracy)) meters")
         }
     }
-    
+
     // MARK: - Beacon Audio Playback
-    
+
     private func playAudioForBeacon(uuid: UUID) {
-        guard let audioFileName = beaconAudioMapping[uuid] else {
+        guard let audioFiles = beaconAudioMapping[uuid] else {
             print("No audio mapped for beacon UUID: \(uuid.uuidString)")
             stopBeaconAudio()
             self.audioNote = "No audio mapped for beacon UUID \(uuid.uuidString)."
             return
         }
-        
-        guard let audioURL = Bundle.main.url(forResource: audioFileName, withExtension: nil) else {
-            print("Audio file \(audioFileName) not found for beacon UUID: \(uuid.uuidString)")
-            self.audioNote = "Audio file \(audioFileName) for beacon UUID \(uuid.uuidString) not found."
+
+        // Play background audio in loop
+        if let backgroundURL = Bundle.main.url(forResource: audioFiles.background, withExtension: nil) {
+            do {
+                beaconBackgroundPlayer = try AVAudioPlayer(contentsOf: backgroundURL)
+                beaconBackgroundPlayer?.numberOfLoops = -1 // Loop indefinitely
+                beaconBackgroundPlayer?.volume = 1.0
+                beaconBackgroundPlayer?.prepareToPlay()
+                beaconBackgroundPlayer?.play()
+                print("Playing beacon background audio: \(audioFiles.background) for beacon UUID: \(uuid.uuidString)")
+            } catch {
+                print("Error playing beacon background audio: \(error.localizedDescription)")
+                self.audioNote = "Error playing beacon background audio \(audioFiles.background): \(error.localizedDescription)"
+            }
+        } else {
+            print("Background audio file \(audioFiles.background) not found for beacon UUID: \(uuid.uuidString)")
+            self.audioNote = "Background audio file \(audioFiles.background) for beacon UUID \(uuid.uuidString) not found."
+        }
+
+        // Initialize narration index if not set
+        if beaconNarrationIndices[uuid] == nil {
+            beaconNarrationIndices[uuid] = 0
+        }
+
+        // Play the first narration audio
+        playNextNarrationAudio(for: uuid)
+    }
+
+    private func playNextNarrationAudio(for uuid: UUID) {
+        guard let audioFiles = beaconAudioMapping[uuid],
+              let narrationIndex = beaconNarrationIndices[uuid],
+              narrationIndex < audioFiles.narration.count else {
+            print("No more narration audios to play for beacon UUID: \(uuid.uuidString)")
             return
         }
-        
-        do {
-            beaconAudioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            beaconAudioPlayer?.numberOfLoops = -1
-            beaconAudioPlayer?.volume = 1.0
-            beaconAudioPlayer?.prepareToPlay()
-            beaconAudioPlayer?.play()
-            print("Playing beacon audio: \(audioFileName) for beacon UUID: \(uuid.uuidString)")
-            self.currentAudio = audioFileName
-        } catch {
-            print("Error playing beacon audio: \(error.localizedDescription)")
-            self.audioNote = "Error playing beacon audio \(audioFileName): \(error.localizedDescription)"
+
+        let narrationFilename = audioFiles.narration[narrationIndex]
+
+        if let narrationURL = Bundle.main.url(forResource: narrationFilename, withExtension: nil) {
+            do {
+                beaconNarrationPlayer = try AVAudioPlayer(contentsOf: narrationURL)
+                beaconNarrationPlayer?.delegate = self // Set delegate to handle completion
+                beaconNarrationPlayer?.numberOfLoops = 0 // Play once
+                beaconNarrationPlayer?.volume = 1.0
+                beaconNarrationPlayer?.prepareToPlay()
+                beaconNarrationPlayer?.play()
+                print("Playing beacon narration audio: \(narrationFilename) for beacon UUID: \(uuid.uuidString)")
+                self.currentAudio = narrationFilename
+                self.beaconNarrationIndices[uuid] = narrationIndex + 1 // Increment narration index
+            } catch {
+                print("Error playing beacon narration audio: \(error.localizedDescription)")
+                self.audioNote = "Error playing beacon narration audio \(narrationFilename): \(error.localizedDescription)"
+            }
+        } else {
+            print("Narration audio file \(narrationFilename) not found for beacon UUID: \(uuid.uuidString)")
+            self.audioNote = "Narration audio file \(narrationFilename) for beacon UUID \(uuid.uuidString) not found."
         }
     }
-    
+
+    // MARK: - AVAudioPlayerDelegate
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        // Check if the narration player finished playing
+        if player == beaconNarrationPlayer, let uuid = currentBeaconUUID {
+            // Play the next narration audio if available
+            playNextNarrationAudio(for: uuid)
+        }
+    }
+
     private func stopBeaconAudio() {
-        if beaconAudioPlayer?.isPlaying == true {
-            beaconAudioPlayer?.stop()
-            print("Beacon audio stopped.")
-            self.currentAudio = nil
+        if beaconNarrationPlayer?.isPlaying == true {
+            beaconNarrationPlayer?.stop()
+            print("Beacon narration audio stopped.")
+        }
+        if beaconBackgroundPlayer?.isPlaying == true {
+            beaconBackgroundPlayer?.stop()
+            print("Beacon background audio stopped.")
+        }
+        self.currentAudio = nil
+
+        // Reset the narration index for the current beacon
+        if let uuid = currentBeaconUUID {
+            beaconNarrationIndices[uuid] = 0
         }
     }
-    
+
     // MARK: - Audio Stop Timer
-    
+
     private func scheduleAudioStop() {
         if stopAudioTimer == nil {
             stopAudioTimer = Timer.scheduledTimer(withTimeInterval: audioStopDelay, repeats: false) { _ in
@@ -294,7 +335,7 @@ class BeaconManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }
     }
-    
+
     private func cancelAudioStopTimer() {
         stopAudioTimer?.invalidate()
         stopAudioTimer = nil
